@@ -5,7 +5,7 @@ from datetime import datetime
 from google_sheets import get_from_google_sheet
 import os
 import pandas as pd
-
+from settings import SHEET_ID
 # from dataclasses import dataclass
 
 
@@ -18,15 +18,19 @@ def check_unique_numbers(df_old: pd.DataFrame, df_new: pd.DataFrame):
     if len(new_unique_numbers) > 0:
         for new_number in sorted(list(new_unique_numbers)):
             df_ = df_new[df_new['Уникальный номер размещения'] == new_number]
-            df_ = df_.drop('Месяц учета оказания услуг', axis=1).rename(
+            df_dates = df_.drop('Месяц учета оказания услуг', axis=1).rename(
                 columns={'Дата учета оказания услуг': today})
-            date = pd.read_excel('date.xlsx')
-            date = pd.concat([date, df_], axis=0)
-            date.to_excel("date.xlsx")
+            df_months = df_.drop('Дата учета оказания услуг', axis=1).rename(
+                columns={'Месяц учета оказания услуг': today})
+            date = pd.read_excel('Table.xlsx', engine='openpyxl', sheet_name='date', index_col=0)
+            month = pd.read_excel('Table.xlsx', engine='openpyxl', sheet_name='month', index_col=0)
 
-            month = pd.read_excel('month.xlsx')
-            month = pd.concat([month, df_], axis=0)
-            month.to_excel("month.xlsx")
+            date = pd.concat([date, df_dates], axis=0)
+            month = pd.concat([month, df_months], axis=0)
+
+            with pd.ExcelWriter("Table.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace') as writer_:
+                date.to_excel(writer_, sheet_name="date")
+                month.to_excel(writer_, sheet_name="month")
         return True
     return False
 
@@ -35,28 +39,29 @@ def check_dates(df_old: pd.DataFrame, df_new: pd.DataFrame):
     column = "Дата учета оказания услуг"
     idx = df_old.shape[0]
     are_dates_equal = df_new[column][:idx] != df_old[column]  # True or False
-    new_dates = df_new[are_dates_equal][:idx]  # from df_new select values which are not equal to old (with index)
+    new_dates = df_new[:idx][are_dates_equal]  # from df_new select values which are not equal to old (with index)
     new_dates = new_dates[column].rename(today)  # rename column "Дата учета оказания услуг"
-    write_values(values=new_dates, file_name='date', idx=idx)
+    write_values(values=new_dates, sheet='date', idx=idx)
 
 
 def check_months(df_old: pd.DataFrame, df_new: pd.DataFrame):
     column = "Месяц учета оказания услуг"
     idx = df_old.shape[0]
     are_months_equal = df_new[column][:idx] != df_old[column]  # True or False
-    new_months = df_new[are_months_equal][:idx]  # from df_new select values which are not equal to old (with index)
+    new_months = df_new[:idx][are_months_equal]  # from df_new select values which are not equal to old (with index)
     new_months = new_months[column].rename(today)  # rename column "Месяц учета оказания услуг"
-    write_values(values=new_months, file_name='month', idx=idx)
+    write_values(values=new_months, sheet='month', idx=idx)
 
 
-def write_values(values, file_name: str, idx: int):
-    df_ = pd.read_excel(f"{file_name}.xlsx")
+def write_values(values, sheet: str, idx: int):
+    df_ = pd.read_excel("Table.xlsx", engine='openpyxl', sheet_name=f"{sheet}", index_col=0)
     df_.loc[:idx - 1, today] = values
-    df_.to_excel(f"{file_name}.xlsx")
+    with pd.ExcelWriter("Table.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace') as writer_:
+        df_.to_excel(writer_, sheet_name=f"{sheet}")
 
 
 def check_values_on_changes(df_new: pd.DataFrame):
-    df_old = pd.read_excel("old_table.xlsx")
+    df_old = pd.read_excel("Table_old.xlsx", engine='openpyxl', index_col=0)
     check_unique_numbers(df_old, df_new)
     check_dates(df_old, df_new)
     check_months(df_old, df_new)
@@ -64,17 +69,18 @@ def check_values_on_changes(df_new: pd.DataFrame):
 
 if __name__ == "__main__":
     curr_table: dict = get_from_google_sheet(cred_file_name='creds.json',
-                                             sheet_id='1DNKTyIuRqVPm4vsgMpkDkRwlQo8LVBgOO7cmtCGjIhY')
+                                             sheet_id=SHEET_ID)
     columns = ['ФИО/Название\nподрядчика', 'Уникальный номер размещения',
                'Дата учета оказания услуг', 'Месяц учета оказания услуг']
     df = pd.concat([pd.Series(name=column, data=curr_table.get(column)) for column in columns],
                    axis=1)
-    if os.path.isfile('old_table.xlsx'):
+    if os.path.isfile('Table_old.xlsx'):
         check_values_on_changes(df)
-        df.to_excel("old_table.xlsx")
+        df.to_excel("Table_old.xlsx", engine='openpyxl')
     else:
-        df.to_excel("old_table.xlsx")
-        df.drop('Дата учета оказания услуг', axis=1).rename(columns={'Месяц учета оказания услуг': today}).to_excel(
-            "month.xlsx")
-        df.drop('Месяц учета оказания услуг', axis=1).rename(columns={'Дата учета оказания услуг': today}).to_excel(
-            "date.xlsx")
+        df.to_excel("Table_old.xlsx", engine='openpyxl')
+        with pd.ExcelWriter("Table.xlsx", engine='openpyxl') as writer:
+            df.drop('Месяц учета оказания услуг', axis=1).rename(columns={'Дата учета оказания услуг': today}).to_excel(
+                writer, sheet_name="date")
+            df.drop('Дата учета оказания услуг', axis=1).rename(columns={'Месяц учета оказания услуг': today}).to_excel(
+                writer, sheet_name="month")
