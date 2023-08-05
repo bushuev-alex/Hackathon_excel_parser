@@ -5,6 +5,7 @@ from datetime import datetime
 from google_sheets import get_from_google_sheet
 import os
 import pandas as pd
+
 # from dataclasses import dataclass
 
 
@@ -31,27 +32,31 @@ def check_unique_numbers(df_old: pd.DataFrame, df_new: pd.DataFrame):
 
 
 def check_dates(df_old: pd.DataFrame, df_new: pd.DataFrame):
+    column = "Дата учета оказания услуг"
     idx = df_old.shape[0]
-    are_dates_equal = df_new[:idx]["Дата учета оказания услуг"] != df_old["Дата учета оказания услуг"]
-    new_dates = df_new[:idx][are_dates_equal]
-    new_dates = new_dates["Дата учета оказания услуг"].rename(today)
-    date = pd.read_excel('date.xlsx')
-    date.loc[:idx-1, today] = new_dates
-    date.to_excel("date.xlsx")
+    are_dates_equal = df_new[column][:idx] != df_old[column]  # True or False
+    new_dates = df_new[are_dates_equal][:idx]  # from df_new select values which are not equal to old (with index)
+    new_dates = new_dates[column].rename(today)  # rename column "Дата учета оказания услуг"
+    write_values(values=new_dates, file_name='date', idx=idx)
 
 
 def check_months(df_old: pd.DataFrame, df_new: pd.DataFrame):
+    column = "Месяц учета оказания услуг"
     idx = df_old.shape[0]
-    are_months_equal = df_new[:idx]["Месяц учета оказания услуг"] != df_old["Месяц учета оказания услуг"]
-    new_months = df_new[:idx][are_months_equal]
-    new_months = new_months["Месяц учета оказания услуг"].rename(today)
-    month = pd.read_excel('month.xlsx')
-    month.loc[:idx-1, today] = new_months
-    month.to_excel("date.xlsx")
+    are_months_equal = df_new[column][:idx] != df_old[column]  # True or False
+    new_months = df_new[are_months_equal][:idx]  # from df_new select values which are not equal to old (with index)
+    new_months = new_months[column].rename(today)  # rename column "Месяц учета оказания услуг"
+    write_values(values=new_months, file_name='month', idx=idx)
+
+
+def write_values(values, file_name: str, idx: int):
+    df_ = pd.read_excel(f"{file_name}.xlsx")
+    df_.loc[:idx - 1, today] = values
+    df_.to_excel(f"{file_name}.xlsx")
 
 
 def check_values_on_changes(df_new: pd.DataFrame):
-    df_old = pd.read_excel('old_table.xlsx')
+    df_old = pd.read_excel("old_table.xlsx")
     check_unique_numbers(df_old, df_new)
     check_dates(df_old, df_new)
     check_months(df_old, df_new)
