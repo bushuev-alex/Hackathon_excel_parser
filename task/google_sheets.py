@@ -1,6 +1,7 @@
 from pprint import pprint
 import httplib2
 import apiclient
+from settings import SHEET_ID
 from oauth2client.service_account import ServiceAccountCredentials
 
 
@@ -25,5 +26,5 @@ def get_from_google_sheet(cred_file_name: str, sheet_id: str) -> dict:
 
 if __name__ == "__main__":
     values_ = get_from_google_sheet(cred_file_name='creds.json',
-                                    sheet_id='1DNKTyIuRqVPm4vsgMpkDkRwlQo8LVBgOO7cmtCGjIhY')  # 1crXiHhDA_69vW3cOPMCHETF_l7VDKOMgdaAK9aRoILw
+                                    sheet_id=SHEET_ID)
     pprint(values_)
