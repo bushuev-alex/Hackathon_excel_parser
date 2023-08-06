@@ -1,2 +1,3 @@
 SHEET_ID = "1DNKTyIuRqVPm4vsgMpkDkRwlQo8LVBgOO7cmtCGjIhY"  # 1crXiHhDA_69vW3cOPMCHETF_l7VDKOMgdaAK9aRoILw
 DATE_ACCURACY = "%d.%m.%Y %H:%M:%S"
+ENGINE = 'openpyxl'
