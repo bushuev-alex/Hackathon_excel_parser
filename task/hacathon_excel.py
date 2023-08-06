@@ -5,7 +5,7 @@ import pandas as pd
 from settings import SHEET_ID, DATE_ACCURACY, ENGINE
 
 
-class :
+class ExcelParser:
     today = datetime.today().strftime(DATE_ACCURACY)
 
     def __init__(self):
