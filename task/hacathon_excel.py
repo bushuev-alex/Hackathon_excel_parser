@@ -18,17 +18,16 @@ class ExcelParser:
             columns={f"{'Месяц' if type_ == 'Дата' else 'Дата'} учета оказания услуг": self.today})
         df_from_sheet = pd.read_excel(f"{self.table_name}", engine=self.engine, sheet_name=sheet, index_col=0)
         df_to_write = pd.concat([df_from_sheet, df_cleared], axis=0)
-        with pd.ExcelWriter(f"{self.table_name}", engine='openpyxl', mode='a', if_sheet_exists='replace') as writer_:
+        with pd.ExcelWriter(f"{self.table_name}", engine=self.engine, mode='a', if_sheet_exists='replace') as writer_:
             df_to_write.to_excel(writer_, sheet_name=sheet)
 
     def check_unique_numbers(self, df_old: pd.DataFrame, df_new: pd.DataFrame) -> None:
         new_unique_numbers: set = set(df_new["Уникальный номер размещения"]). \
             symmetric_difference(set(df_old["Уникальный номер размещения"]))
-        if len(new_unique_numbers) > 0:
-            for new_number in sorted(list(new_unique_numbers)):
-                df_ = df_new[df_new['Уникальный номер размещения'] == new_number]
-                self.rename_and_write_rows(df_, 'Дата', 'month')
-                self.rename_and_write_rows(df_, 'Месяц', 'date')
+        if new_unique_numbers:
+            df_ = df_new[df_new['Уникальный номер размещения'].isin(list(new_unique_numbers))]  # rows with new numbers
+            self.rename_and_write_rows(df_, 'Дата', 'month')
+            self.rename_and_write_rows(df_, 'Месяц', 'date')
 
     def check_dates(self, df_old: pd.DataFrame, df_new: pd.DataFrame) -> None:
         column = "Дата учета оказания услуг"
@@ -47,13 +46,13 @@ class ExcelParser:
         self.write_values(values=new_months, sheet='month', idx=idx)
 
     def write_values(self, values: pd.Series, sheet: str, idx: int) -> None:
-        df_ = pd.read_excel(f"{self.table_name}", engine='openpyxl', sheet_name=f"{sheet}", index_col=0)
+        df_ = pd.read_excel(f"{self.table_name}", engine=self.engine, sheet_name=f"{sheet}", index_col=0)
         df_.loc[:idx - 1, self.today] = values
-        with pd.ExcelWriter(f"{self.table_name}", engine='openpyxl', mode='a', if_sheet_exists='replace') as writer_:
+        with pd.ExcelWriter(f"{self.table_name}", engine=self.engine, mode='a', if_sheet_exists='replace') as writer_:
             df_.to_excel(writer_, sheet_name=f"{sheet}")
 
     def check_values_on_changes(self, df_new: pd.DataFrame) -> None:
-        df_old = pd.read_excel("Table_old.xlsx", engine=ENGINE, index_col=0)
+        df_old = pd.read_excel("Table_old.xlsx", engine=self.engine, index_col=0)
         self.check_unique_numbers(df_old, df_new)
         self.check_dates(df_old, df_new)
         self.check_months(df_old, df_new)
@@ -68,8 +67,8 @@ class ExcelParser:
         return df_
 
     def write_first_table_to_compare(self, df_: pd.DataFrame) -> None:
-        df_.to_excel("Table_old.xlsx", engine=ENGINE)
-        with pd.ExcelWriter(f"{self.table_name}", engine='openpyxl') as writer:
+        df_.to_excel("Table_old.xlsx", engine=self.engine)
+        with pd.ExcelWriter(f"{self.table_name}", engine=self.engine) as writer:
             df_.drop('Месяц учета оказания услуг', axis=1).rename(
                 columns={'Дата учета оказания услуг': self.today}).to_excel(writer, sheet_name="date")
             df_.drop('Дата учета оказания услуг', axis=1).rename(
@@ -80,7 +79,7 @@ def main():
     parser = ExcelParser()
     df = parser.get_google_data()
 
-    if os.path.isfile('Table_old.xlsx'):
+    if os.path.isfile('Table_old.xlsx'):  #
         parser.check_values_on_changes(df)
         df.to_excel("Table_old.xlsx", engine=ENGINE)
     else:
