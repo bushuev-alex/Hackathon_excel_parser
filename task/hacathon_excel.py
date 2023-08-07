@@ -50,7 +50,7 @@ class ExcelParser:
         self.check_dates(df_old, df_new, "Месяц", "month")
 
     def get_google_data(self) -> pd.DataFrame:
-        table: dict = get_from_google_sheet(cred_file_name='creds.json',  # easy to make pandas.DataFrame from dict ->
+        table: dict = get_from_google_sheet(cred_file_name='creds.json',  # easy to make pandas.DataFrame from dict
                                             sheet_id=self.sheet_id)
         columns = ['ФИО/Название\nподрядчика', 'Уникальный номер размещения',  # cols needed from table
                    'Дата учета оказания услуг', 'Месяц учета оказания услуг']
